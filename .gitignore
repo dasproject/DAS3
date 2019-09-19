@@ -50,3 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# raw notes in word files, log files
+*.docx
+*.log
