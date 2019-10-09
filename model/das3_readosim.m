@@ -12,7 +12,7 @@ function model = das3_readosim(osimfile,musclepolyfile,GHpolyfile)
 % so "musclepolyfile" and "GHpolyfile" are optional inputs
 %
 % Dimitra Blana, October 2014
-% based on gait3d_readosim.m by Ton van den Bogert
+% based on gait3d_readosim.m by Ton van den Bogert %
 
 
 % import OpenSim namespace
