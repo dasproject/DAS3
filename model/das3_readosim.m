@@ -13,6 +13,8 @@ function model = das3_readosim(osimfile,musclepolyfile,GHpolyfile)
 %
 % Dimitra Blana, October 2014
 % based on gait3d_readosim.m by Ton van den Bogert %
+%
+% Updated for OpenSim 4.0 by Derek Wolf, October 2019
 
 
 % import OpenSim namespace
@@ -58,21 +60,30 @@ for ijoints = 1:model.nJoints
     % basics
     model.joints{ijoints}.name = fixname(char(currentJoint.getName()));
     
-    % location in parent segment
-    tmpVec3f = Vec3();
-    currentJoint.getLocationInParent(tmpVec3f);
+    % location and orientation in parent frame
+    parent_frame=currentJoint.get_frames(0);
+    tmpVec3f=parent_frame.get_translation(); % location
     model.joints{ijoints}.location = [tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
     
-    % orientation in parent segment (seldom used)
-    tmpVec3f = Vec3();
-    currentJoint.getOrientationInParent(tmpVec3f);
+    tmpVec3f=parent_frame.get_orientation(); % orientation
     model.joints{ijoints}.orientation = [tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
     
-    % name of parent segment this joint is attached to
-    model.joints{ijoints}.parent_segment=fixname(char(currentJoint.getParentBody().getName()));
+    % name of parent segment this joint is attached to 
+    model.joints{ijoints}.parent_segment=fixname(char(parent_frame.findBaseFrame()));
     
-    % name of segment this joint belongs to
-    model.joints{ijoints}.segment=fixname(char(currentJoint.getBody().getName()));
+    % name of segment this joint belongs to    
+    child_frame=currentJoint.get_frames(1);
+    model.joints{ijoints}.segment=fixname(char(child_frame.findBaseFrame()));
+    
+    % check if orientation and translation of child frame is 0
+    tmpVec3f=child_frame.get_translation();
+    child_translation=[tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
+    tmpVec3f=child_frame.get_orientation(); % orientation
+    child_orientation = [tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
+    
+    if ~isequal(child_translation,[0 0 0]) || ~isequal(child_orientation,[0 0 0]) 
+        error('Child frame translation or orientation is not [0,0,0]')
+    end
     
     % spatial transforms
     currentJoint = CustomJoint.safeDownCast(currentJoint);
@@ -159,25 +170,32 @@ for isegment = 1:model.nSegments
     segment_names{isegment} = char(currentSegment.getName());
     
     % mass center
-    tmpVec3 = ArrayDouble.createVec3([1 0 0]);
-    currentSegment.getMassCenter(tmpVec3);
-    tmpAD = ArrayDouble.getValuesFromVec3(tmpVec3);
-    model.segments{isegment}.mass_center = [tmpAD.getitem(0) tmpAD.getitem(1) tmpAD.getitem(2)];
-    
+    tmpVec3=currentSegment.getMassCenter();
+    model.segments{isegment}.mass_center = [tmpVec3.get(0) tmpVec3.get(1) tmpVec3.get(2)];
+
     % inertia matrix
-    tmpMat33=Mat33(0,0,0,0,0,0,0,0,0);
-    currentSegment.getInertia(tmpMat33);
+    tmpVec6=currentSegment.get_inertia();
     model.segments{isegment}.inertia = zeros(3,3);
-    for x=1:3
-        for y=1:3
-            model.segments{isegment}.inertia(x,y)=tmpMat33.get(x-1,y-1);
-        end
-    end
+    model.segments{isegment}.inertia(1,1)=tmpVec6.get(0); % Ixx
+    model.segments{isegment}.inertia(2,2)=tmpVec6.get(1); % Iyy
+    model.segments{isegment}.inertia(3,3)=tmpVec6.get(2); % Izz
+    model.segments{isegment}.inertia(1,2)=tmpVec6.get(3); % Ixy
+    model.segments{isegment}.inertia(1,3)=tmpVec6.get(4); % Ixz
+    model.segments{isegment}.inertia(2,3)=tmpVec6.get(5); % Iyz
+    model.segments{isegment}.inertia(2,1)=tmpVec6.get(3); % Ixy
+    model.segments{isegment}.inertia(3,1)=tmpVec6.get(4); % Ixz
+    model.segments{isegment}.inertia(3,2)=tmpVec6.get(5); % Iyz
+
     
     % name of parent joint this segment is attached to
     model.segments{isegment}.parent_joint='';
-    if currentSegment.hasJoint()
-        model.segments{isegment}.parent_joint=fixname(char(currentSegment.getJoint().getName()));
+    for ijoint=1:model.nJoints
+        if strcmp(model.joints{ijoint}.segment,model.segments{isegment}.name)
+           model.segments{isegment}.parent_joint=model.joints{ijoint}.name;
+           break;
+        elseif ijoint==model.nJoints % error check if no joint name was found
+                error('No matches for segment name were found');
+        end
     end
 end
 
@@ -280,8 +298,6 @@ counter=0;
 for imus = 1:model.nMus
     currentMuscle = MuscleSet.get(imus-1);
     
-    % remove disabled muscles from the model
-    if currentMuscle.get_isDisabled, continue; end
     
     counter=counter+1;
     
@@ -350,18 +366,17 @@ for imus = 1:model.nMus
         insertion_segment = helpseg;
     end
     
-    current_segment = insertion_segment;
+    current_segment_index = insertion_segment_index;
     
     dof_count = 0;
     dof_list = cell(model.nDofs,1);
     dof_indeces = zeros(model.nDofs,1);
     
-    while (current_segment ~= origin_segment)
-        if ~current_segment.hasJoint()
-            error(['No muscle path found for muscle ',model.muscles{imus}.name]);
-        end
+    while (current_segment_index ~= origin_segment_index)
         
-        current_joint = current_segment.getJoint();
+        %%% TODO, continue edits from here
+        current_joint=model.segments{current_segment_index}.parent_joint;
+        %current_joint = current_segment.getJoint();
         current_dofs = current_joint.getCoordinateSet();
         
         for idofs=1:current_dofs.getSize()
