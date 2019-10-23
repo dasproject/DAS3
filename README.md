@@ -1,6 +1,6 @@
 # DAS3: 3D shoulder and elbow model
 
-Developer team: Ton van den Bogert (a.vandenbogert@csuohio.edu), Dimitra Blana (d.blana@keele.ac.uk), Ed Chadwick (e.k.j.chadwick@keele.ac.uk)
+Developer team: Ton van den Bogert (a.vandenbogert@csuohio.edu), Dimitra Blana (dimitra.blana@abdn.ac.uk), Ed Chadwick (edward.chadwick@abdn.ac.uk)
 
 DAS3 is the third generation of the Dynamic Arm Simulator, a musculoskeletal model of the shoulder and arm. The arm simulator is developed as part of the NIH contract “Brain-Controlled Hybrid Functional Electrical Stimulation”, led by Dr. Robert F. Kirsch at Case Western Reserve University.
 
