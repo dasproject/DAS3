@@ -54,3 +54,4 @@ dkms.conf
 # raw notes in word files, log files
 *.docx
 *.log
+model/build/das3.al
