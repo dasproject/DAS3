@@ -6,12 +6,14 @@ function das3_buildmodel
     addpath('..');
 	model = das3_readosim('../das3.osim');
     rmpath('..');
+    
+    % make the Autolev source file das3.al
+    das3_makeAutolev(model, 'das3.al');  
 	
     % Use Autolev to generate the kinematics/dynamics code, but only when
     % das3_al_raw.c is outdated. Two reasons: (1) Autolev may not be
     % installed, (2) this takes about 4 minutes
     if needs_rebuild('das3_al_raw.c', {'../das3.osim' , 'das3_makeAutolev.m'})
-	    das3_makeAutolev(model, 'das3.al');  % make the Autolev source file das3.al
         minutes = 4;
         runautolev('das3.al', minutes);
     end
