@@ -1,4 +1,4 @@
-function das3_makeMEX(model,osimfile,MEXtemplate,newMEX)
+function das3_makeMEX(model,MEXtemplate,newMEX)
 	% Creates MEX file and header file from Opensim model osimfile
 	% MEXtemplate is the file used to fill in all the MEX content that is
 	% independent of the model
@@ -189,7 +189,9 @@ function das3_makeMEX(model,osimfile,MEXtemplate,newMEX)
 
 	fprintf(mexh_file,'} param_struct;\n\n');
 
-
+    % watch out: the prototype for the Autolev C function must be identical
+    % to the function definition in autolevclean (in das3_buildmodel.m)
+    % if not, hopefully the C compiler will give an error message
 	fprintf(mexh_file,'// prototype for the Autolev C function\n');
 	fprintf(mexh_file,'void %s_al(\n',fname);
 	fprintf(mexh_file,'	param_struct* param,				// input: pointer to struct containing parameter\n');

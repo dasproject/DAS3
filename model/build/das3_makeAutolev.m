@@ -31,23 +31,17 @@ function das3_makeAutolev(model, Autolevfile)
 	%transcoords = {'r1_coordinates', 'r2_coordinates', 'r3_coordinates', 't1_coordinates', 't2_coordinates', 't3_coordinates'};
 	transcoords = {'r1_coordinates', 'r2_coordinates', 'r3_coordinates'};
 
-	% First, find the Newtonian frame
-	allsegs = 1:model.nSegments;
-	for iseg = allsegs
-		current_seg = model.segments{iseg};
-		if isempty(current_seg.parent_joint) && current_seg.mass==0
-			% this is the newtonian reference frame
-			newtonian = current_seg.name;
-			fprintf(autolev_file, '%%------------------------------------\n');
-			fprintf(autolev_file, '%% Segment %s\n',newtonian);
-			fprintf(autolev_file, '%%------------------------------------\n');
-			fprintf(autolev_file, 'Newtonian %s\n\n',newtonian);
-			break;
-		end
-	end
+	% First, create the Newtonian frame, called 'ground'
+    % (Opensim 4.0 has a ground, but it is not a body, so it was not picked up
+    % by readosim.m)
+    newtonian = 'ground';
+	fprintf(autolev_file, '%%------------------------------------\n');
+    fprintf(autolev_file, '%% Newtonian frame\n');
+	fprintf(autolev_file, '%%------------------------------------\n');
+	fprintf(autolev_file, 'Newtonian %s\n\n',newtonian);
 
 	% Add all other segments
-	allsegs = setdiff(allsegs,iseg);
+    allsegs = 1:model.nSegments;
 	seen_dofs = cell(1,1);
 	dof_index=1;
 

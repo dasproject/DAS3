@@ -54,4 +54,13 @@ dkms.conf
 # raw notes in word files, log files
 *.docx
 *.log
-model/build/das3.al
+
+# temporary files generated during the build process
+model/build/das3.al		
+*.asv					
+*.obj					
+model/build/das3_al_raw.in   
+model/build/das3.c
+model/build/das3.h
+model/build/das3_al.c
+model/build/alTmp.*	     
