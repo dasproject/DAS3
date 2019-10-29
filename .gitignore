@@ -51,14 +51,13 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-# raw notes in word files, log files
+# raw notes in word files, log files, Matlab autosave files
 *.docx
 *.log
+*.asv
 
 # temporary files generated during the build process
-model/build/das3.al		
-*.asv					
-*.obj					
+model/build/das3.al					
 model/build/das3_al_raw.in   
 model/build/das3.c
 model/build/das3.h
