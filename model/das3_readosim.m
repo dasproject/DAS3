@@ -8,7 +8,7 @@ function model = das3_readosim(osimfile,musclepolyfile,GHpolyfile)
 % computed by das3_polynomials.m
 %
 % If this Matlab struct is used to create the Autolev file or the MEX file,
-% muscle path  and GH force vector information is not required 
+% muscle path  and GH force vector information is not required
 % so "musclepolyfile" and "GHpolyfile" are optional inputs
 %
 % Dimitra Blana, October 2014
@@ -68,10 +68,10 @@ for ijoints = 1:model.nJoints
     tmpVec3f=parent_frame.get_orientation(); % orientation
     model.joints{ijoints}.orientation = [tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
     
-    % name of parent segment this joint is attached to 
+    % name of parent segment this joint is attached to
     model.joints{ijoints}.parent_segment=fixname(char(parent_frame.findBaseFrame()));
     
-    % name of segment this joint belongs to    
+    % name of segment this joint belongs to
     child_frame=currentJoint.get_frames(1);
     model.joints{ijoints}.segment=fixname(char(child_frame.findBaseFrame()));
     
@@ -81,7 +81,7 @@ for ijoints = 1:model.nJoints
     tmpVec3f=child_frame.get_orientation(); % orientation
     child_orientation = [tmpVec3f.get(0) tmpVec3f.get(1) tmpVec3f.get(2)];
     
-    if ~isequal(child_translation,[0 0 0]) || ~isequal(child_orientation,[0 0 0]) 
+    if ~isequal(child_translation,[0 0 0]) || ~isequal(child_orientation,[0 0 0])
         error('Child frame translation or orientation is not [0,0,0]')
     end
     
@@ -172,7 +172,7 @@ for isegment = 1:model.nSegments
     % mass center
     tmpVec3=currentSegment.getMassCenter();
     model.segments{isegment}.mass_center = [tmpVec3.get(0) tmpVec3.get(1) tmpVec3.get(2)];
-
+    
     % inertia matrix
     tmpVec6=currentSegment.get_inertia();
     model.segments{isegment}.inertia = zeros(3,3);
@@ -185,16 +185,16 @@ for isegment = 1:model.nSegments
     model.segments{isegment}.inertia(2,1)=tmpVec6.get(3); % Ixy
     model.segments{isegment}.inertia(3,1)=tmpVec6.get(4); % Ixz
     model.segments{isegment}.inertia(3,2)=tmpVec6.get(5); % Iyz
-
+    
     
     % name of parent joint this segment is attached to
     model.segments{isegment}.parent_joint='';
     for ijoint=1:model.nJoints
         if strcmp(model.joints{ijoint}.segment,model.segments{isegment}.name)
-           model.segments{isegment}.parent_joint=model.joints{ijoint}.name;
-           break;
+            model.segments{isegment}.parent_joint=model.joints{ijoint}.name;
+            break;
         elseif ijoint==model.nJoints % error check if no joint name was found
-                error('No matches for segment name were found');
+            error('No matches for segment name were found');
         end
     end
 end
@@ -234,8 +234,8 @@ for idof = 1:model.nDofs
     model.dofs{counter}.osim_name = char(currentDof.getName());
     
     % range of motion in radians
-%     model.dofs{counter}.range(1) = currentDof.getRangeMin()+2/180*pi;
-%     model.dofs{counter}.range(2) = currentDof.getRangeMax()-2/180*pi;
+    %     model.dofs{counter}.range(1) = currentDof.getRangeMin()+2/180*pi;
+    %     model.dofs{counter}.range(2) = currentDof.getRangeMax()-2/180*pi;
     model.dofs{counter}.range(1) = currentDof.getRangeMin();
     model.dofs{counter}.range(2) = currentDof.getRangeMax();
 end
@@ -361,9 +361,9 @@ for imus = 1:model.nMus
     % if the origin is more distal than the insertion, flip the
     % segments
     if origin_segment_index>insertion_segment_index
-        helpseg = origin_segment;
-        origin_segment = insertion_segment;
-        insertion_segment = helpseg;
+        helpseg = origin_segment_index;
+        origin_segment_index = insertion_segment_index;
+        insertion_segment_index = helpseg;
     end
     
     current_segment_index = insertion_segment_index;
@@ -374,13 +374,21 @@ for imus = 1:model.nMus
     
     while (current_segment_index ~= origin_segment_index)
         
-        %%% TODO, continue edits from here
-        current_joint=model.segments{current_segment_index}.parent_joint;
-        %current_joint = current_segment.getJoint();
-        current_dofs = current_joint.getCoordinateSet();
+        % find current joint
+        current_joint_name=model.segments{current_segment_index}.parent_joint;
+        for ijoint=1:model.nJoints
+            if strcmp(model.joints{ijoint}.name,current_joint_name)
+                current_joint = JointSet.get(ijoint-1);
+                break;
+            elseif ijoint==model.nJoints % error check if no joint name was found
+                error('No matches for segment name were found');
+            end
+        end
         
-        for idofs=1:current_dofs.getSize()
-            dof_name = fixname(char(current_dofs.get(idofs-1).getName()));
+        ndofs = current_joint.numCoordinates();
+        
+        for idofs=1:ndofs
+            dof_name = fixname(char(current_joint.get_coordinates(idofs-1)));
             dof_index = find(strcmp(dof_name,dof_names));
             if ~isempty(dof_index)
                 dof_count=dof_count+1;
@@ -388,8 +396,10 @@ for imus = 1:model.nMus
                 dof_indeces(dof_count) = dof_index;
             end
         end
-        
-        current_segment = current_joint.getParentBody();
+                
+        parent_frame=current_joint.get_frames(0);
+        parentBody=parent_frame.findBaseFrame();
+        current_segment_index=find(strcmp(parentBody,segment_names));
     end
     
     [sorted_dofs, sorted_indeces] = sort(dof_indeces(1:dof_count));
@@ -445,11 +455,11 @@ if nargin>2
         model.muscles{imus}.xparam_count = current_mus.xparam_count;
         model.muscles{imus}.xparams = current_mus.xparams;
         model.muscles{imus}.xcoefs = current_mus.xcoef;
-
+        
         model.muscles{imus}.yparam_count = current_mus.yparam_count;
         model.muscles{imus}.yparams = current_mus.yparams;
         model.muscles{imus}.ycoefs = current_mus.ycoef;
-
+        
         model.muscles{imus}.zparam_count = current_mus.zparam_count;
         model.muscles{imus}.zparams = current_mus.zparams;
         model.muscles{imus}.zcoefs = current_mus.zcoef;
@@ -479,7 +489,7 @@ for imarkers = 1:model.nMarkers
     model.markers{imarkers}.position = [tmpVec3.get(0) tmpVec3.get(1) tmpVec3.get(2)];
     
     % find index
-    for ibodys = 1:model.nSegments;
+    for ibodys = 1:model.nSegments
         if strcmp(model.segments{ibodys}.name, model.markers{imarkers}.segment)
             model.markers{imarkers}.segmentindex = ibodys;
         end
@@ -491,11 +501,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % The stiffness and length of the conoid ligament have been chosen so that
-% the force-displacement curve matches human cadaver measurements described in Harris et al. 
+% the force-displacement curve matches human cadaver measurements described in Harris et al.
 % Am J Sports Med, vol.28, 2000, pp.103-8.
 
 model.conoid_eps	= 0.001;	% epsilon for conoid force-length model
-model.conoid_stiffness = 80000;	% stiffness of conoid 
+model.conoid_stiffness = 80000;	% stiffness of conoid
 model.conoid_length = 0.0174;	% length (m) of conoid ligament
 model.conoid_origin =  [0.1365, 0.0206, 0.0136];	% coordinates of conoid origin in clavicle frame
 model.conoid_insertion = [-0.0536, -0.0009, -0.0266];	% coordinates of conoid insertion in scapula frame
@@ -507,15 +517,15 @@ model.conoid_insertion = [-0.0536, -0.0009, -0.0266];	% coordinates of conoid in
 model.scap_thorax_eps 	= 0.01;		% epsilon for scapula-thorax contact model ~ 0.01 is recommended
 model.scap_thorax_k   	= 2e4;		% stiffness k (N/m) in scapula-thorax contact model (2e4 is recommended)
 % these are the projections of TS and AI onto the thorax ellipsoid, not the actual TS and AI
-% model.TSprojection = [-0.1305, -0.0181, -0.0046];	
-% model.AIprojection = [-0.1267, -0.1246, 0.0052];	
+% model.TSprojection = [-0.1305, -0.0181, -0.0046];
+% model.AIprojection = [-0.1267, -0.1246, 0.0052];
 model.TSprojection = [-0.1274   -0.0228   -0.0346]; % coordinates of TS projection in scapula frame
 model.AIprojection = [-0.1257   -0.1223   -0.0275]; % coordinates of AI projection in scapula frame
 
 % get thorax ellipsoid information from thorax wrapping object
 for isegment = 1:model.nSegments
     currentSegment = BodySet.get(isegment-1);
-   
+    
     if strcmp(currentSegment.getName(),'thorax')
         ellipsoid =  WrapEllipsoid.safeDownCast(currentSegment.getWrapObjectSet.get(0));
         tmpVec3 = ellipsoid.getRadii();
