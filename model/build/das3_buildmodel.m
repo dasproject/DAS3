@@ -26,7 +26,7 @@ function das3_buildmodel
     % slower
     MEXOPTIONS = '-g -largeArrayDims';
     fprintf('Compiling the C code...\n');
-    if findstr(MEXOPTIONS,'-g');
+    if findstr(MEXOPTIONS,'-g')
         hours = 2; 
         fprintf('Estimated completion at %s...\n', datestr(addtodate(now, hours, 'hour')));
     else
@@ -34,6 +34,10 @@ function das3_buildmodel
         fprintf('Estimated completion at %s...\n', datestr(addtodate(now, minutes, 'minute')));
     end
     mex(MEXOPTIONS,'das3.c','das3_al.c');  % creates das3.mexw64 on windows
+    
+    % create the .mat files with polynomials for muscle length and muscle
+    % contributions to GH reaction force
+    das3_polynomials('../das3.osim', './tmp', 'musclepoly.mat', 'GHpoly.mat')
 	
 end
 %==============================================================================================
