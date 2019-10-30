@@ -63,3 +63,5 @@ model/build/das3.c
 model/build/das3.h
 model/build/das3_al.c
 model/build/alTmp.*	     
+*.mexw64
+*.tmp
