@@ -4,7 +4,7 @@ function das3_buildmodel(options)
     % will to produce an optimized (faster) MEX binary but this takes a
     % long time to compile.
     
-   osimfile = '../das3.osim';   % it is in the model folder
+    osimfile = '../das3.osim';   % it is in the model folder
     
 	% load the Opensim model
     addpath('..');
