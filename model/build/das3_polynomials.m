@@ -7,9 +7,13 @@ function das3_polynomials(osimfile,mydir,musclepolyfile,GHpolyfile)
 % GHpolyfile: the name of the .mat file with polynomials for GH lines of action
 %
 % Dimitra Blana, October 2014
+% 
+% Updated for OpenSim 4.0 by Derek Wolf, November 2019
 
 % creates structure with information on the model
+addpath('..');
 model = das3_readosim(osimfile);
+rmpath('..');
 muscles = model.muscles;
 
 import org.opensim.modeling.*
@@ -18,7 +22,7 @@ Mod = Model(osimfile);
 % this is needed to get the GH lines of action in the scapular frame
 SimEn = SimbodyEngine();
 SimEn.connectSimbodyEngineToModel(Mod);
-groundbody = Mod.getBodySet().get('ground');
+groundbody = Mod.getBodySet().get('thorax');
 scapulabody = Mod.getBodySet().get('scapula_r');
 
 default_dof = 0; % default value for all dofs
@@ -36,9 +40,7 @@ for ijnt=1:model.nDofs
     end
 end
 
-shoulder_angles = das3_workspace('das2data');
-% add zeros for the thorax angles
-shoulder_angles = [zeros(size(shoulder_angles,1),3) shoulder_angles];
+shoulder_angles = DAS3_workspace('DAS2data');
 
 dof_names = cell(model.nDofs,1);
 for idof = 1:model.nDofs
@@ -104,12 +106,12 @@ for imus = 1:length(muscles)
         % instead of moment arms directly from Opensim, calculate them using -dL/dq
         % if the muscle crosses GH, also get the lines of action
         if any(strcmp('GHy',mus.dof_names))
-            [alllengths, allmomarms, allGHfvecs] = opensim_get_polyvalues(Mod, alljnts, mus.name, mus.dof_indeces, SimEn, groundbody, scapulabody);
+            [alllengths, allmomarms, allGHfvecs] = opensim_get_polyvalues(Mod, alljnts, mus.name, imus, mus.dof_indeces, SimEn, groundbody, scapulabody);
             save([mydir '\path_' mus.name],'alljnts','alllengths','allmomarms');        
             save([mydir '\GHfvec_' mus.name],'alljnts','allGHfvecs');        
             disp([mus.name, ' lengths, moment arms and GH force vectors saved.']);
         else
-            [alllengths, allmomarms] = opensim_get_polyvalues(Mod, alljnts, mus.name, mus.dof_indeces);
+            [alllengths, allmomarms] = opensim_get_polyvalues(Mod, alljnts, mus.name, imus, mus.dof_indeces);
             save([mydir '\path_' mus.name],'alljnts','alllengths','allmomarms');        
             disp([mus.name, ' lengths and moment arms saved.']);
         end
@@ -132,7 +134,7 @@ if nargin>3, GH_poly(muscles,mydir,GHpolyfile); end
 
 
 %=============================================================================================
-function [lengths, minusdLdq, GHfvecs] = opensim_get_polyvalues(Mod, angles, Mus, Dofs, SimEn, groundbody,scapulabody)
+function [lengths, minusdLdq, GHfvecs] = opensim_get_polyvalues(Mod, angles, Mus, iMus, Dofs, SimEn, groundbody,scapulabody)
 % This function calculates the length and -dL/dq of muscle "Mus" about dof set 
 % "Dofs" at a given angle matrix "angles" of opensim model "Mod"
 %
@@ -145,6 +147,10 @@ function [lengths, minusdLdq, GHfvecs] = opensim_get_polyvalues(Mod, angles, Mus
 %
 % 28/3/2012: Use setValue (with active constraints) instead of set state
 % 1/10/2014: Simplified how the muscles and dofs are accessed
+%
+% 11/25/19: Update by Derek Wolf: iMus is used to access the muscle and a
+% check is used to determine if the name (with no underscores) matches the
+% name in Mus
 
 import org.opensim.modeling.*
 % initialize the system to get the initial state
@@ -157,7 +163,13 @@ CoordSet = Mod.getCoordinateSet();
 num_request_dofs = length(Dofs);
 
 % get the muscle
-currentMuscle = Mod.getMuscles().get(Mus);
+% currentMuscle = Mod.getMuscles().get(Mus);
+currentMuscle = Mod.getMuscles().get(iMus-1);
+if ~strcmp(fixname(char(currentMuscle.getName())),Mus)
+    error('Current muscle name is incorrect')
+end
+
+
 
 % angles matrix: one position per row
 [nrows,ncols] = size(angles);
@@ -201,8 +213,8 @@ for istep = 1:size(angles,1)
         scap_pt_index = -1;
         % find the "effective" muscle attachment on the scapula
         for ipt=1:fdarray.getSize-1
-            body1 = char(fdarray.get(ipt-1).body);
-            body2 = char(fdarray.get(ipt).body);
+            body1 = char(fdarray.get(ipt-1).frame); %4.0 uses frames not bodies
+            body2 = char(fdarray.get(ipt).frame);
             if strcmp(body1,'scapula_r')&&strcmp(body2,'humerus_r')
                 scap_pt_index=ipt;
                 break;
@@ -216,8 +228,8 @@ for istep = 1:size(angles,1)
             % find the "effective" muscle attachment on the clavicle
             % instead
             for ipt=1:fdarray.getSize-1
-                body1 = char(fdarray.get(ipt-1).body);
-                body2 = char(fdarray.get(ipt).body);
+                body1 = char(fdarray.get(ipt-1).frame);
+                body2 = char(fdarray.get(ipt).frame);
                 if strcmp(body1,'clavicle_r')&&strcmp(body2,'humerus_r')
                     scap_pt_index=ipt;
                     break;
@@ -232,8 +244,8 @@ for istep = 1:size(angles,1)
             % find the "effective" muscle attachment on the thorax
             % instead
             for ipt=1:fdarray.getSize-1
-                body1 = char(fdarray.get(ipt-1).body);
-                body2 = char(fdarray.get(ipt).body);
+                body1 = char(fdarray.get(ipt-1).frame);
+                body2 = char(fdarray.get(ipt).frame);
                 if strcmp(body1,'thorax')&&strcmp(body2,'humerus_r')
                     scap_pt_index=ipt;
                     break;
@@ -248,8 +260,8 @@ for istep = 1:size(angles,1)
             % find the "effective" muscle attachment on the ulna
             % instead
             for ipt=1:fdarray.getSize-1
-                body1 = char(fdarray.get(ipt-1).body);
-                body2 = char(fdarray.get(ipt).body);
+                body1 = char(fdarray.get(ipt-1).frame);
+                body2 = char(fdarray.get(ipt).frame);
                 if strcmp(body1,'scapula_r')&&strcmp(body2,'ulna_r')
                     scap_pt_index=ipt;
                     break;
@@ -264,8 +276,8 @@ for istep = 1:size(angles,1)
             % find the "effective" muscle attachment on the radius
             % instead
             for ipt=1:fdarray.getSize-1
-                body1 = char(fdarray.get(ipt-1).body);
-                body2 = char(fdarray.get(ipt).body);
+                body1 = char(fdarray.get(ipt-1).frame);
+                body2 = char(fdarray.get(ipt).frame);
                 if strcmp(body1,'scapula_r')&&strcmp(body2,'radius_r')
                     scap_pt_index=ipt;
                     break;
@@ -933,3 +945,20 @@ for idir=1:3
     title([dir_names{idir}, ' GH force vectors for ',musmodel.name],'Interpreter', 'none'); 
 end
 legend('osim','poly');
+
+
+function name = fixname(orig_name)
+% no underscores in names
+name = strrep(orig_name, '_', '');
+while ~isletter(name(1))
+    if isstrprop(name(1),'digit')
+        % move numbers to the end of the name
+        name = [name(2:end) name(1)];
+    else
+        % remove underscores and other non-alphanumeric characters
+        name = name(2:end);
+    end
+    if isempty(name)
+        error(['Name ',orig_name ' does not include any alphabetic characters. Please rename.']);
+    end
+end
