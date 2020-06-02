@@ -8,7 +8,9 @@ The model was originally developed for real-time simulation.  When used together
 
 However, the model comes with an API that allows other types of applications.  Offline simulations (faster or slower than real time) can be performed to simulate experiments or do optimization of control systems.  Trajectory optimizations can be done using collocation methods to do state estimation, predictive simulations, or design optimization [2].
 
-This repository is provided for users to install the most recent version.  We hope that users will contribute to the project.
+This repository has work in progress to port the project from Opensim 3.3 to Opensim 4.0.  The Opensim 3.3 version is still at https://simtk.org/projects/das.  Binaries and documentation are available, and source code is accessible for team members.
+
+When the port is completed, the most recent version can be downloaded here.  We hope that users will contribute to the project.
 
 To use DAS3, the following environment is needed:
 - Matlab 2018b or later
