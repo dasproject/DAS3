@@ -420,7 +420,7 @@ if nargin>1
     for imus=1:length(poly_mus.mus_model)
         current_mus = poly_mus.mus_model{imus};
         for iimus=1:model.nMus
-            if strcmp(current_mus.name,model.muscles{iimus}.osim_name)
+            if strcmp(current_mus.name,model.muscles{iimus}.osim_name) || strcmp(current_mus.name,model.muscles{iimus}.name)
                 model.muscles{iimus}.lparam_count = current_mus.num_lparams;
                 model.muscles{iimus}.lparams = current_mus.lparams;
                 model.muscles{iimus}.lcoefs = current_mus.lcoef;
