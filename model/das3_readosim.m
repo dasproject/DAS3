@@ -471,7 +471,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MARKERS - Not tested for shoulder model!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Does not work with osim4 and shoulder model
 
+%{
 % get the set of markers
 MarkerSet = Mod.getMarkerSet();
 model.nMarkers = MarkerSet.getSize();
@@ -479,6 +481,7 @@ model.nMarkers = MarkerSet.getSize();
 % loop through all markers
 for imarkers = 1:model.nMarkers
     currentMarker = MarkerSet.get(imarkers-1);
+
     
     % basic properties
     model.markers{imarkers}.name = fixname(char(currentMarker.getName()));
@@ -495,6 +498,7 @@ for imarkers = 1:model.nMarkers
         end
     end
 end
+%}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONOID LIGAMENT FORCE MODEL
@@ -573,6 +577,25 @@ function coefs = osimfunction2coefs(f)
 
 import org.opensim.modeling.*;
 coefs=[];
+
+%%%
+% We want to take the scaling into account https://simtk.org/api_docs/opensim/api_docs/classOpenSim_1_1MultiplierFunction.html
+
+% first we define a default scaling factor of 1 that will be applied to all the values :
+scalingFactor = 1;
+
+% Now check if it's scaled (if we have a multiplier function)
+fx2=MultiplierFunction.safeDownCast(f);
+
+if ~isempty(fx2) % if not empty
+
+	% This is a multiplier function
+    scalingFactor = fx2.getScale; % update the scalingFactor
+    fx3 = fx2.getFunction; % extract the function inside the multiplierfunction
+    f = fx3; % replace (f) to continue the function normally
+
+end
+%%%
 
 fx=Constant.safeDownCast(f);
 if ~isempty(fx)
