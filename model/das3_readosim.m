@@ -472,6 +472,8 @@ end
 % MARKERS - Not tested for shoulder model!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%{
+% Discarded as does not work when model has integrated markers in opensim 4+, and not use for shoulder model
 % get the set of markers
 MarkerSet = Mod.getMarkerSet();
 model.nMarkers = MarkerSet.getSize();
@@ -495,6 +497,7 @@ for imarkers = 1:model.nMarkers
         end
     end
 end
+%}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONOID LIGAMENT FORCE MODEL
