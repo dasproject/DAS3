@@ -693,7 +693,7 @@ if (polyfile < 0)
 end
 
 % mat file, if it exists, append, don't overwrite
-matfilename = [mydir '\' musclepolyfile '.mat'];
+matfilename = [mydir '\' musclepolyfile];
 % if exist(matfilename,'file')
 %     polys = load(matfilename);
 %     GH_model = polys.GH_model;
