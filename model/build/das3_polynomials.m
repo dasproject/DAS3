@@ -9,6 +9,7 @@ function das3_polynomials(osimfile,mydir,musclepolyfile,GHpolyfile)
 % Dimitra Blana, October 2014
 % 
 % Updated for OpenSim 4.0 by Derek Wolf, November 2019
+% 29/03/22: Update by D Blana: convert cells to tables for clearer access
 
 % creates structure with information on the model
 addpath('..');
@@ -25,83 +26,64 @@ SimEn.connectSimbodyEngineToModel(Mod);
 groundbody = Mod.getBodySet().get('thorax');
 scapulabody = Mod.getBodySet().get('scapula_r');
 
-default_dof = 0; % default value for all dofs
-allvectxts = '';
-jnt_values = cell(1,model.nDofs);
-jnt_vals = cell(1,model.nDofs);
-
-for ijnt=1:model.nDofs
-    jnt_values{ijnt} = default_dof;
-    jnt_vals{ijnt} = default_dof;
-    if isempty(allvectxts)
-        allvectxts = ['jnt_values{' num2str(ijnt) '}'];
-    else
-        allvectxts = [allvectxts ',jnt_values{' num2str(ijnt) '}'];
-    end
-end
-
-shoulder_angles = DAS3_workspace('DAS2data');
-
+% get DOF names
 dof_names = cell(model.nDofs,1);
 for idof = 1:model.nDofs
     dof_names{idof} = model.dofs{idof}.name;
 end
 
+% get DOF range
+% Shoulder
+shoulder_dofs = {'SCy','SCz','SCx','ACy','ACz','ACx','GHy','GHz','GHyy'};
+shoulder_angles = DAS3_workspace('DAS2data');
+shoulder = array2table(shoulder_angles,'VariableNames',shoulder_dofs); 
+
+% Elbow flexion-extension
+ELx_index = find(strcmp(dof_names, 'ELx'));
+lims = model.dofs{ELx_index}.range;
+elbow_flexion = array2table((lims(1):(lims(2)-lims(1))/4:lims(2))','VariableNames',{'ELx'});  % 5 steps
+
+% Forearm pronation-supination
+PSy_index = find(strcmp(dof_names, 'PSy'));
+lims = model.dofs{PSy_index}.range;
+pro_sup = array2table((lims(1):(lims(2)-lims(1))/4:lims(2))','VariableNames',{'PSy'});  % 5 steps
+
+% All combinations of elbow flexion-extension and pro-supination
+elbow = array2table((combvec(elbow_flexion.ELx',pro_sup.PSy'))','VariableNames',{'ELx','PSy'});
+
+% All combinations of shoulder and elbow flexion
+sh_elbow = array2table((combvec(shoulder{:,:}',elbow_flexion.ELx'))','VariableNames',[shoulder_dofs, 'ELx']);
+
+% All combinations of all angles
+sh_elbow_pro_sup = array2table((combvec(shoulder{:,:}',elbow{:,:}'))','VariableNames',[shoulder_dofs, 'ELx', 'PSy']);
+
+
 %% for each muscle...
-for imus = 1:length(muscles)
-%for imus = 1:0
-    mus = muscles{imus};
+for imus = 1:length(model.muscles)
+%for imus = 116:138
+    mus = model.muscles{imus};
     
-    % give all dofs the default value
-    for ijnt=1:model.nDofs
-        jnt_values{ijnt} = default_dof;
+    if mus.dof_indeces == PSy_index  % only pronation - supination
+        angles = array2table(zeros(size(pro_sup,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,'PSy') = pro_sup;
+    elseif mus.dof_indeces == ELx_index  % only flexion - extension
+        angles = array2table(zeros(size(elbow_flexion,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,'ELx') = elbow_flexion;
+    elseif length(mus.dof_indeces) == 2  % only elbow DOFs
+        angles = array2table(zeros(size(elbow,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,{'ELx','PSy'}) = elbow;
+    elseif mus.dof_indeces(end)<ELx_index  % only shoulder DOFs
+        angles = array2table(zeros(size(shoulder,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,shoulder_dofs) = shoulder;
+    elseif mus.dof_indeces(end)<PSy_index  % shoulder and elbow flexion/extension
+        angles = array2table(zeros(size(sh_elbow,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,[shoulder_dofs, 'ELx']) = sh_elbow;
+    else % all DOFs
+        angles = array2table(zeros(size(sh_elbow_pro_sup,1),model.nDofs),'VariableNames',dof_names); 
+        angles(:,[shoulder_dofs, 'ELx', 'PSy']) = sh_elbow_pro_sup;
     end
-    
-    % if the muscle only crosses the elbow, go through the range
-    if mus.dof_indeces(1)>12
-        for ijnt = 1:length(mus.dof_indeces)
-            onedof = mus.dof_indeces(ijnt);
-            lims = model.dofs{onedof}.range;
-    %        values = lims(1):10:lims(2);  % every 10 degrees
-            jnt_values{onedof} = lims(1):(lims(2)-lims(1))/4:lims(2);  % 5 steps
-        end
-
-        % alljnts contain all the combinations of joint angles for the range of
-        % motion of this muscle
-        % rows: # combinations of angles
-        % columns: # angles
-        try
-        eval(['alljnts = combvec(' allvectxts ')'';']);
-        catch err
-            disp(err);
-            disp(['Skipping muscle ',mus.name, ' ...sorry!']);
-            continue;     
-        end
-    elseif mus.dof_indeces(end)<13
-        % if the muscle only crosses the shoulder, use "shoulder_angles"
-        alljnts = shoulder_angles;
-    else
-        % if the muscle crosses both shoulder and elbow, use
-        % shoulder_angles + range of motion
-        clear elbow
-        lims = model.dofs{13}.range;
-        elbow{1} = lims(1):(lims(2)-lims(1))/5:lims(2);  % 6 steps
-        lims = model.dofs{14}.range;
-        elbow{2} = lims(1):(lims(2)-lims(1))/5:lims(2);  % 6 steps
-
-        % alljnts contain all the combinations of joint angles for the range of
-        % motion of this muscle
-        % rows: # combinations of angles
-        % columns: # angles
-        try
-        alljnts = combvec(shoulder_angles(:,1:12)',elbow{1},elbow{2})';
-        catch err
-            disp(err);
-            disp(['Skipping muscle ',mus.name, ' ...sorry!']);
-            continue;     
-        end
-    end
-    
+   
+    alljnts = angles{:,:};
     try
         % instead of moment arms directly from Opensim, calculate them using -dL/dq
         % if the muscle crosses GH, also get the lines of action
@@ -168,8 +150,6 @@ currentMuscle = Mod.getMuscles().get(iMus-1);
 if ~strcmp(fixname(char(currentMuscle.getName())),Mus)
     error('Current muscle name is incorrect')
 end
-
-
 
 % angles matrix: one position per row
 [nrows,ncols] = size(angles);
@@ -555,7 +535,7 @@ for imus = 1:length(muscles)
     fprintf(logfile,'  %d polynomial terms were written for %s\n',npar_selected+1, mus.name);
 
     % plot muscle length from Opensim and polynomial
-    if ~mod(imus,20)
+    if ~mod(imus,15)
         examine_momarms(mus_model{imus}, mus.dof_names, ma.allmomarms, ang);	
     end
     

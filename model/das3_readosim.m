@@ -325,6 +325,8 @@ for imus = 1:model.nMus
     model.muscles{imus}.tact = 1/(act1+act2);
     model.muscles{imus}.tdeact = 1/act2;
     
+    model.muscles{imus}.maxact = 1;
+    
     currentprop = currentMuscle.getPropertyByName('active_force_length_curve');
     active_fl_o = currentprop.getValueAsObject;
     active_fl_spline = SimmSpline.safeDownCast(active_fl_o);
